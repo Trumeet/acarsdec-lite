@@ -171,10 +171,14 @@ static void usage(void)
 #ifdef WITH_SDRPLAY
 	fprintf(stderr,
 		"\n sdrplayopts:\n"
-		" --sdrplay\t\t: decode from sdrplay\n"
+		" --sdrplay <device>\t: decode from sdrplay with sequence number <device> or hex serial <device>\n"
+		" -a <antenna>\t\t: set antenna port to use (default: first antenna)\n"
+		" -B <bias>\t\t: enable (1) or disable (0) the bias tee (default is 0)\n"
 		" -c <freq>\t\t: set center frequency to tune to in MHz, e.g. 131.800 (default: automatic)\n"
-		" -G <GRdB>\t\t: gain reduction in dB's, range 20 .. 59 (default: -100 is autogain)\n"
-		" -L <lnaState>\t: set the lnaState (depends on the device)\n");
+		" -G <gRdB>\t\t: gain reduction in dB's, range 20 .. 59 (default: -100 is autogain)\n"
+		" -L <lnaState>\t\t: set the lnaState (depends on the device)\n"
+		" -m <rateMult>\t\t: set sample rate multiplier: sample rate is <rateMult> * 12000 S/s (default: 252)\n"
+		" -p <ppm>\t\t: set ppm frequency correction (default: 0)\n");
 #endif
 #ifdef WITH_SOAPY
 	fprintf(stderr,
@@ -277,7 +281,7 @@ int main(int argc, char **argv)
 		{ "airspy", required_argument, NULL, IN_AIR },
 #endif
 #ifdef WITH_SDRPLAY
-		{ "sdrplay", no_argument, NULL, IN_SDRPLAY },
+		{ "sdrplay", required_argument, NULL, IN_SDRPLAY },
 #endif
 #ifdef WITH_SOAPY
 		{ "soapysdr", required_argument, NULL, IN_SOAPY },
@@ -364,12 +368,13 @@ int main(int argc, char **argv)
 			if (R.inmode)
 				errx(-1, "Only 1 input allowed");
 			R.inmode = IN_SDRPLAY;
+			inarg = optarg;
 			break;
 		case 'L':
 			R.lnaState = atoi(optarg);
 			break;
 		case 'G':
-			R.GRdB = atoi(optarg);
+			R.gRdB = atoi(optarg);
 			break;
 #endif
 #ifdef WITH_SOAPY
@@ -379,6 +384,8 @@ int main(int argc, char **argv)
 			R.inmode = IN_SOAPY;
 			inarg = optarg;
 			break;
+#endif
+#if defined(WITH_SOAPY) || defined(WITH_SDRPLAY)
 		case 'a':
 			R.antenna = optarg;
 			break;
@@ -445,7 +452,7 @@ int main(int argc, char **argv)
 #endif
 #ifdef WITH_SDRPLAY
 	case IN_SDRPLAY:
-		res = initSdrplay();
+		res = initSdrplay(inarg);
 		break;
 #endif
 #ifdef WITH_SOAPY
@@ -532,7 +539,8 @@ int main(int argc, char **argv)
 #endif
 #ifdef WITH_SDRPLAY
 	case IN_SDRPLAY:
-		res = runSdrplaySample();
+		runSdrplaySample();
+		res = runSdrplayClose();
 		break;
 #endif
 #ifdef WITH_SOAPY

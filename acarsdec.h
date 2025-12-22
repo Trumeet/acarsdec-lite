@@ -159,11 +159,13 @@ typedef struct {
 	int ppm;
 	int bias;
 	unsigned int rateMult;
+#ifdef WITH_SDRPLAY
 	int lnaState;
-	int GRdB;
+	int gRdB;
+#endif
 	unsigned int Fc, minFc, maxFc;
 
-#ifdef WITH_SOAPY
+#if defined(WITH_SOAPY) || defined(WITH_SDRPLAY)
 	char *antenna;
 #endif
 } runtime_t;
