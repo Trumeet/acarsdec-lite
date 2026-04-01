@@ -21,6 +21,7 @@
 #define lib_h
 
 unsigned int min_multiplier(unsigned int minFc, unsigned int maxFc);
+unsigned int min_samplerate(unsigned int minFc, unsigned int maxFc);
 unsigned int find_centerfreq(unsigned int minFc, unsigned int maxFc, unsigned int multiplier);
 unsigned int find_centerfreq_rate(unsigned int minFc, unsigned int maxFc, unsigned int input_rate);
 int channels_init_sdr(unsigned int Fc, unsigned int multiplier, float scale);

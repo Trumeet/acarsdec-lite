@@ -41,6 +41,17 @@
 #define MIX_RENORM_INTERVAL 1024U
 
 /**
+ * Return the minimum sample rate  suitable to cover the target frequency range.
+ * @param minFc lowest frequency in the range
+ * @param maxFc highest frequency in the range
+ * @return suitable sample rate
+ */
+unsigned int min_samplerate(unsigned int minFc, unsigned int maxFc)
+{
+	return ((maxFc - minFc) + 4 * INTRATE);
+}
+
+/**
  * Return the minimum sample rate multiplier suitable to cover the target frequency range.
  * @param minFc lowest frequency in the range
  * @param maxFc highest frequency in the range
@@ -49,22 +60,7 @@
 unsigned int min_multiplier(unsigned int minFc, unsigned int maxFc)
 {
 	// default min multiplier - see find_centerfreq() for computation margins applied
-	return ((maxFc - minFc) + 4 * INTRATE + INTRATE) / INTRATE;
-}
-
-unsigned int find_centerfreq(unsigned int minFc, unsigned int maxFc, unsigned int multiplier)
-{
-	if (R.Fc)
-		return R.Fc;
-	
-	if ((maxFc - minFc) > multiplier * INTRATE - 4 * INTRATE) {
-		fprintf(stderr, "Frequencies too far apart\n");
-		return 0;
-	}
-
-	// the original tried to pin the center frequency to one of the provided ACARS freqs
-	// there is no reason to do this (and in fact it's better to avoid the DC spike), so keep this simple:
-	return (maxFc + minFc) / 2;
+	return (min_samplerate(minFc, maxFc) + INTRATE) / INTRATE;
 }
 
 unsigned int find_centerfreq_rate(unsigned int minFc, unsigned int maxFc, unsigned int input_rate)
@@ -78,6 +74,11 @@ unsigned int find_centerfreq_rate(unsigned int minFc, unsigned int maxFc, unsign
 	}
 
 	return (maxFc + minFc) / 2;
+}
+
+unsigned int find_centerfreq(unsigned int minFc, unsigned int maxFc, unsigned int multiplier)
+{
+	return (find_centerfreq_rate(minFc, maxFc, multiplier * INTRATE));
 }
 
 /**
@@ -114,6 +115,12 @@ int channels_init_sdr(unsigned int Fc, unsigned int multiplier, float scale)
 	return 0;
 }
 
+/**
+ * Allocate and init the internal oscillators - resampling version.
+ * @param Fc the chosen center frequency
+ * @param input_rate the chosen sampling rate
+ * @param scale the phasor scale (e.g. 1.0F for complex float32 phasors; 32768.0F for int16 phasors, ...)
+ */
 int channels_init_sdr_resample(unsigned int Fc, unsigned int input_rate, float scale)
 {
 	unsigned int n;
@@ -261,6 +268,9 @@ void channels_mix_phasors(const float complex *restrict phasors, unsigned int le
  * @param phasors An array of input I/Q samples from the SDR
  * @param len The number of complex samples in the array.
  * @param input_rate The sample rate in samples per second.
+ * @note this implementation is an order of magnitude more CPU-intensive than
+ * the regular `channels_mix_phasors()` implementation and should only be used
+ * for inputs that do not support sample rates which are multiples of INTRATE.
  */
 void channels_mix_phasors_resample(const float complex *restrict phasors, unsigned int len, unsigned int input_rate)
 {
@@ -292,9 +302,9 @@ void channels_mix_phasors_resample(const float complex *restrict phasors, unsign
 			// and add the result into the current output accumulator.
 			mixed = sample * ch->mix_phase;
 
-// The below can be used to debug if the renormalization isn't working
-// correctly or if the data is bad (the sample is NaN or inf). 
 #if defined(DEBUG)
+			// The below can be used to debug if the renormalization isn't working
+			// correctly or if the data is bad (the sample is NaN or inf).
 			if (!isfinite(crealf(mixed)) || !isfinite(cimagf(mixed))) {
 				vprerr("WARNING: MIX: resetting non-finite mixed sample on channel #%u\n", n + 1);
 				ch->mix_phase = cabsf(ch->mix_phase) > 0.0F ? ch->mix_phase / cabsf(ch->mix_phase) * ((float)INTRATE / (float)input_rate) : ((float)INTRATE / (float)input_rate);

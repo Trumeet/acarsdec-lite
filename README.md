@@ -195,9 +195,6 @@ DESTPARAMS are:
  -c <freq>		set center frequency to tune to in MHz, e.g. 131.800 (default: automatic)
  -g <linearity_gain>	set linearity gain [0-21] (default: 18)
 ```
- 
-Note: acarsdec will try to set the R820T tuner bandwidth to suit given frequencies.
-See https://tleconte.github.io/R820T/r820IF.html
 
 #### SDRplay (untested, uses legacy v2 API - help wanted)
 

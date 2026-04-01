@@ -183,7 +183,7 @@ int initAirspy(char *optarg)
 
 	airspy_get_samplerates(device, supported_samplerates, count);
 	int use_samplerate_index = -1;
-	required_rate = (R.maxFc - R.minFc) + 4 * INTRATE;
+	required_rate = min_samplerate(R.minFc, R.maxFc);
 	for (i = 0; i < count; i++) {
 		uint32_t new_rate = supported_samplerates[i];
 		if (new_rate < required_rate)
