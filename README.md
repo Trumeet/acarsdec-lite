@@ -19,7 +19,7 @@ Since 3.0, it can work with a database backend: [acarsserv](https://github.com/T
 
 GPLv2-only - http://www.gnu.org/licenses/gpl-2.0.html
 
-Copyright: (C) 2007-2022,2025 Thierry Leconte, (C) 2024-2025 Thibaut VARENE
+Copyright: (C) 2007-2022,2025 Thierry Leconte, (C) 2024-2026 Thibaut VARENE
 
 > This program is free software; you can redistribute it and/or
 > modify it under the terms of the GNU General Public License
@@ -80,9 +80,9 @@ It can be ommitted for a platform-generic build (with possibly reduced performan
 In case the compile option `-march=native` doesn't work correctly on Raspberry Pi,
 the following cmake parameter can be used instead in the above procedure:
 
- * for PI 2B : `-DCMAKE_C_FLAGS="-mcpu=cortex-a7 -mfpu=neon-vfpv4"`
- * for PI 3B : `-DCMAKE_C_FLAGS="-mcpu=cortex-a53 -mfpu=neon-fp-armv8"`
- * for PI 4B : `-DCMAKE_C_FLAGS="-mcpu=cortex-a72 -mfpu=neon-fp-armv8"`
+ * for RPi 2 : `-DCMAKE_C_FLAGS="-mcpu=cortex-a7 -mfpu=neon-vfpv4"`
+ * for RPi 3 : `-DCMAKE_C_FLAGS="-mcpu=cortex-a53 -mfpu=neon-fp-armv8"`
+ * for RPi 4 : `-DCMAKE_C_FLAGS="-mcpu=cortex-a72 -mfpu=neon-fp-armv8"`
 
 ### Installing
 
@@ -143,7 +143,7 @@ Outputs to a file (including stdout, the default). Supports all output formats.
 DESTPARAMS are optional (no param implies output to stdout) and can be:
 
 - `path=` followed by either `-` for stdout or a path to a logfile
-- `rotate=` followed by one of `none`, `hourly` or `daily` to dis/enable hourly/daily logfile rotation
+- `rotate=` followed by one of `none` (default), `hourly` or `daily` to dis/enable hourly/daily logfile rotation
 
 ##### `udp` output
 

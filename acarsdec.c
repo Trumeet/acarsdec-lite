@@ -120,7 +120,7 @@ static void print_available_ins(void)
 
 static void usage(void)
 {
-	fprintf(stderr, "Acarsdec %s Copyright (c) 2007-2022,2025 Thierry Leconte, (c) 2024-2025 Thibaut VARENE\n", ACARSDEC_VERSION);
+	fprintf(stderr, "Acarsdec %s Copyright (c) 2007-2022,2025 Thierry Leconte, (c) 2024-2026 Thibaut VARENE\n", ACARSDEC_VERSION);
 #ifdef HAVE_LIBACARS
 	fprintf(stderr, "(libacars %s)\n", LA_VERSION);
 #endif
