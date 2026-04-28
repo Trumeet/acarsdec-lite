@@ -23,6 +23,9 @@
 #include "output.h"
 #include "statsd.h"
 
+#include <libacars/libacars.h>
+#include <libacars/acars.h>
+
 // ACARS is LSb first, 7-bit ASCII range. MSb is odd parity bit.
 
 // include parity MSb
@@ -44,6 +47,8 @@ static pthread_mutex_t blkq_mtx = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t blkq_wcd = PTHREAD_COND_INITIALIZER;
 static msgblk_t *blkq_h = NULL;
 static pthread_t blkth_id;
+
+static la_reasm_ctx *reasm_ctx = NULL;
 
 static int acars_shutdown = 1;
 
@@ -106,6 +111,7 @@ static int fixdberr(msgblk_t *blk, const uint16_t crc)
 #define MAXPERR 3
 static void *blk_thread(void *arg)
 {
+	reasm_ctx = la_reasm_ctx_new();
 	do {
 		msgblk_t *blk;
 		uint8_t i, pn, chn;
@@ -199,7 +205,7 @@ static void *blk_thread(void *arg)
 		bool pfail = 0;
 		for (i = 0; i < blk->txtlen; i++) {	// vectorizable (in clang at least)
 			pfail |= !parity8(blk->txt.raw[i]);
-			blk->txt.raw[i] &= 0x7f;
+			// blk->txt.raw[i] &= 0x7f;
 		}
 		if (pfail) {
 			vprerr("#%d parity check failed\n", chn+1);
@@ -221,7 +227,14 @@ static void *blk_thread(void *arg)
 			statsd_update(pfx, metrics, ARRAY_SIZE(metrics));
 		}
 
-		outputmsg(blk);
+		la_proto_node *node = la_acars_parse_and_reassemble(blk->txt.raw, blk->txtlen + 3, LA_MSG_DIR_UNKNOWN, reasm_ctx, blk->tv);
+
+		la_vstring *vstr = la_proto_tree_format_text(NULL, node);
+		fwrite(vstr->str, sizeof(char), vstr->len, stdout);
+		fputc('\n', stdout);
+		la_vstring_destroy(vstr, true);
+
+		la_proto_tree_destroy(node);
 fail:
 		free(blk);
 
@@ -375,31 +388,41 @@ synced:
 		}
 		if (unlikely(r == DEL && ch->blk->txtlen >= TXTMINLEN + 3)) {
 			vprerr("#%d missed txt end\n", ch->chn + 1);
-			ch->blk->txtlen -= 3;
-			ch->blk->crc[0] = ch->blk->txt.raw[ch->blk->txtlen];
-			ch->blk->crc[1] = ch->blk->txt.raw[ch->blk->txtlen + 1];
+			ch->blk->crc[0] = ch->blk->txt.raw[ch->blk->txtlen - 3];
+			ch->blk->crc[1] = ch->blk->txt.raw[ch->blk->txtlen - 2];
+			ch->blk->txt.raw[ch->blk->txtlen - 3] = ETX;
+			ch->blk->txt.raw[ch->blk->txtlen - 2] = ch->blk->crc[0];
+			ch->blk->txt.raw[ch->blk->txtlen - 1] = ch->blk->crc[1];
+			ch->blk->txt.raw[ch->blk->txtlen++] = r;
 			ch->Acarsstate = END;
 			goto putmsg_lbl;
 		}
 		return;
 
 	case CRC1:
+		ch->blk->txt.raw[ch->blk->txtlen++] = r;
 		ch->blk->crc[0] = r;
 		ch->Acarsstate = CRC2;
 		return;
 
 	case CRC2:
+		ch->blk->txt.raw[ch->blk->txtlen++] = r;
 		ch->blk->crc[1] = r;
 		ch->Acarsstate = END;
 		return;
 
 	case END:
-		if (unlikely(r != DEL))
+		if (unlikely(r != DEL)) {
 			vprerr("#%d didn't get DEL: %x\n", ch->chn+1, r);	// ignored
+			r = DEL;
+		}
+		ch->blk->txt.raw[ch->blk->txtlen++] = r;
 
 putmsg_lbl:
 
 		vprerr("put message #%d\n", ch->chn + 1);
+
+		ch->blk->txtlen -= 3;
 
 		pthread_mutex_lock(&blkq_mtx);
 		ch->blk->prev = blkq_h;
